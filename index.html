@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Momentum Swing Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#05030F;
+  --surface:#0B0720;
+  --card:#100D28;
+  --border:#1E1545;
+  --purple:#59058F;
+  --teal:#00A8A8;
+  --blue:#0388BC;
+  --navy:#180D5B;
+  --buy:#00D4AA;
+  --hold:#0388BC;
+  --sell:#C0205A;
+  --text:#E8E4FF;
+  --muted:#7B71B0;
+  --mono:'Space Mono',monospace;
+  --sans:'Sora',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;
+     background-image:radial-gradient(ellipse at 10% 0%,rgba(89,5,143,.15) 0%,transparent 60%),
+                      radial-gradient(ellipse at 90% 100%,rgba(0,168,168,.08) 0%,transparent 50%);}
+header{display:flex;align-items:center;justify-content:space-between;padding:20px 32px 16px;
+        border-bottom:1px solid var(--border);background:rgba(11,7,32,.6);backdrop-filter:blur(12px);
+        position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-icon{width:36px;height:36px;border-radius:8px;
+            background:linear-gradient(135deg,var(--purple),var(--teal));
+            display:flex;align-items:center;justify-content:center;font-size:16px}
+.logo-text{font-weight:700;font-size:18px;letter-spacing:-.3px}
+.logo-sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.ts{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right}
+.ts span{display:block;color:var(--teal);font-size:10px;margin-top:2px}
+
+.wrap{max-width:1600px;margin:0 auto;padding:24px 32px}
+
+/* ── Summary cards ── */
+.summary-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:28px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.card.buy-card::before{background:var(--buy)}
+.card.hold-card::before{background:var(--hold)}
+.card.sell-card::before{background:var(--sell)}
+.card.nifty50-card::before{background:var(--purple)}
+.card.nifty100-card::before{background:var(--teal)}
+.card.sp500-card::before{background:var(--blue)}
+.card-label{font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.card-val{font-size:26px;font-weight:700;font-family:var(--mono)}
+.card-val.buy-val{color:var(--buy)}
+.card-val.hold-val{color:var(--hold)}
+.card-val.sell-val{color:var(--sell)}
+.card-sub{font-size:11px;color:var(--muted);margin-top:4px}
+.index-price{font-size:20px;font-weight:600;font-family:var(--mono)}
+.index-chg{font-size:12px;font-family:var(--mono);margin-top:3px}
+.pos{color:var(--buy)}.neg{color:var(--sell)}
+
+/* ── Controls ── */
+.controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+.filter-group{display:flex;gap:6px}
+.filter-btn{background:var(--card);border:1px solid var(--border);color:var(--muted);
+             font-family:var(--mono);font-size:11px;padding:7px 14px;border-radius:6px;
+             cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:.5px}
+.filter-btn:hover{border-color:var(--blue);color:var(--text)}
+.filter-btn.active{border-color:transparent;color:#fff;font-weight:700}
+.filter-btn.active.all-btn{background:var(--navy)}
+.filter-btn.active.buy-btn{background:linear-gradient(135deg,#006845,#00D4AA44);border-color:var(--buy);color:var(--buy)}
+.filter-btn.active.hold-btn{background:linear-gradient(135deg,#013d5c,#0388BC44);border-color:var(--blue);color:var(--blue)}
+.filter-btn.active.sell-btn{background:linear-gradient(135deg,#5c0028,#C0205A44);border-color:var(--sell);color:var(--sell)}
+.filter-btn.active.idx-btn{background:var(--purple);color:#fff}
+.sep{width:1px;height:28px;background:var(--border)}
+.search-box{flex:1;min-width:180px;background:var(--card);border:1px solid var(--border);
+             color:var(--text);font-family:var(--mono);font-size:12px;padding:7px 12px;
+             border-radius:6px;outline:none}
+.search-box:focus{border-color:var(--blue)}
+.sort-info{font-family:var(--mono);font-size:10px;color:var(--muted);margin-left:auto}
+
+/* ── Table ── */
+.table-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead tr{background:var(--navy)}
+th{padding:12px 14px;text-align:left;font-family:var(--mono);font-size:10px;
+    text-transform:uppercase;letter-spacing:.8px;color:var(--muted);
+    cursor:pointer;user-select:none;white-space:nowrap;position:relative}
+th:hover{color:var(--text)}
+th.sorted-asc::after{content:' ▲';color:var(--teal);font-size:9px}
+th.sorted-desc::after{content:' ▼';color:var(--teal);font-size:9px}
+tbody tr{border-bottom:1px solid rgba(30,21,69,.5);transition:background .15s}
+tbody tr:hover{background:rgba(3,136,188,.07)}
+tbody tr:nth-child(even){background:rgba(16,13,40,.4)}
+tbody tr:nth-child(even):hover{background:rgba(3,136,188,.07)}
+td{padding:11px 14px;white-space:nowrap}
+
+.rank{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right;width:36px}
+.ticker{font-family:var(--mono);font-weight:700;font-size:13px;color:var(--text)}
+.idx-badge{font-size:9px;font-family:var(--mono);padding:2px 7px;border-radius:3px;
+            font-weight:700;letter-spacing:.5px}
+.idx-nifty50{background:rgba(89,5,143,.3);color:#C060FF;border:1px solid rgba(89,5,143,.5)}
+.idx-nifty100{background:rgba(0,168,168,.2);color:var(--teal);border:1px solid rgba(0,168,168,.4)}
+.idx-sp500{background:rgba(3,136,188,.2);color:#60C8FF;border:1px solid rgba(3,136,188,.4)}
+.price{font-family:var(--mono);font-size:12px}
+.chg{font-family:var(--mono);font-size:11px}
+.sig-badge{display:inline-block;padding:4px 10px;border-radius:4px;
+            font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.8px}
+.sig-BUY{background:rgba(0,212,170,.15);color:var(--buy);border:1px solid rgba(0,212,170,.35)}
+.sig-HOLD{background:rgba(3,136,188,.15);color:var(--hold);border:1px solid rgba(3,136,188,.35)}
+.sig-SELL{background:rgba(192,32,90,.15);color:var(--sell);border:1px solid rgba(192,32,90,.35)}
+.rsi-val{font-family:var(--mono);font-size:11px}
+.rsi-buy{color:var(--buy)}.rsi-hold{color:var(--blue)}.rsi-sell{color:var(--sell)}
+.macd-pos{color:var(--buy);font-family:var(--mono);font-size:11px}
+.macd-neg{color:var(--sell);font-family:var(--mono);font-size:11px}
+.adx-val{font-family:var(--mono);font-size:11px}
+.score-bar{display:flex;align-items:center;gap:8px}
+.bar-bg{width:80px;height:6px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .3s}
+.score-num{font-family:var(--mono);font-size:11px;color:var(--muted);min-width:26px}
+.ema-ok{color:var(--buy)}.ema-bad{color:var(--sell)}.ema-neutral{color:var(--muted)}
+
+.empty-state{text-align:center;padding:60px;color:var(--muted);font-family:var(--mono);font-size:13px}
+.count-label{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:8px}
+
+footer{text-align:center;padding:24px;font-family:var(--mono);font-size:10px;
+        color:var(--muted);border-top:1px solid var(--border);margin-top:32px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">📈</div>
+    <div>
+      <div class="logo-text">MOMENTUM TRACKER</div>
+      <div class="logo-sub">NIFTY 50 · NIFTY 100 · S&amp;P 500</div>
+    </div>
+  </div>
+  <div class="ts">Last updated<span id="ts">05 Jun 2026  13:21</span></div>
+</header>
+
+<div class="wrap">
+
+  <!-- Summary Cards -->
+  <div class="summary-grid">
+    <div class="card buy-card">
+      <div class="card-label">▲ BUY</div>
+      <div class="card-val buy-val" id="cnt-buy">11</div>
+      <div class="card-sub">momentum setups</div>
+    </div>
+    <div class="card hold-card">
+      <div class="card-label">◆ HOLD</div>
+      <div class="card-val hold-val" id="cnt-hold">12</div>
+      <div class="card-sub">watch / in-trade</div>
+    </div>
+    <div class="card sell-card">
+      <div class="card-label">▼ SELL</div>
+      <div class="card-val sell-val" id="cnt-sell">7</div>
+      <div class="card-sub">exit / avoid</div>
+    </div>
+    <div class="card nifty50-card">
+      <div class="card-label">NIFTY 50</div>
+      <div class="index-price" id="n50-px">—</div>
+      <div class="index-chg" id="n50-chg">loading…</div>
+    </div>
+    <div class="card nifty100-card">
+      <div class="card-label">NIFTY 100</div>
+      <div class="index-price" id="n100-px">—</div>
+      <div class="index-chg" id="n100-chg">loading…</div>
+    </div>
+    <div class="card sp500-card">
+      <div class="card-label">S&amp;P 500</div>
+      <div class="index-price" id="sp500-px">—</div>
+      <div class="index-chg" id="sp500-chg">loading…</div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="filter-group">
+      <button class="filter-btn all-btn active" onclick="setSignal('ALL')">All (30)</button>
+      <button class="filter-btn buy-btn" onclick="setSignal('BUY')">▲ Buy (11)</button>
+      <button class="filter-btn hold-btn" onclick="setSignal('HOLD')">◆ Hold (12)</button>
+      <button class="filter-btn sell-btn" onclick="setSignal('SELL')">▼ Sell (7)</button>
+    </div>
+    <div class="sep"></div>
+    <div class="filter-group">
+      <button class="filter-btn idx-btn active" onclick="setIndex('ALL')">All Indices</button>
+      <button class="filter-btn idx-btn" onclick="setIndex('NIFTY 50')">Nifty 50</button>
+      <button class="filter-btn idx-btn" onclick="setIndex('NIFTY 100')">Nifty 100</button>
+      <button class="filter-btn idx-btn" onclick="setIndex('S&P 500')">S&amp;P 500</button>
+    </div>
+    <input class="search-box" id="searchBox" placeholder="Search ticker…" oninput="render()"/>
+    <div class="sort-info" id="sort-info">Click column headers to sort</div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <table id="mainTable">
+      <thead>
+        <tr>
+          <th onclick="sortBy('rank')">#</th>
+          <th onclick="sortBy('Ticker')">Ticker</th>
+          <th onclick="sortBy('Index')">Index</th>
+          <th onclick="sortBy('Price')">Price</th>
+          <th onclick="sortBy('Change_Pct')">1D %</th>
+          <th onclick="sortBy('Week_Chg')">5D %</th>
+          <th onclick="sortBy('RSI')">RSI</th>
+          <th onclick="sortBy('MACD_Hist')">MACD Hist</th>
+          <th onclick="sortBy('ADX')">ADX</th>
+          <th onclick="sortBy('Vol_Ratio')">Vol ×</th>
+          <th onclick="sortBy('Target_5D')">🎯 Target 5D</th>
+          <th onclick="sortBy('Stop_Loss')">🛑 Stop Loss</th>
+          <th onclick="sortBy('RR')">R:R</th>
+          <th onclick="sortBy('Score')">Score</th>
+          <th onclick="sortBy('Signal')">Signal</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="empty-state" id="empty" style="display:none">No stocks match current filters</div>
+  </div>
+  <div class="count-label" id="count-label"></div>
+</div>
+
+<footer>Momentum Swing Tracker · Data via Yahoo Finance · Not financial advice · For personal trading research only</footer>
+
+<script>
+const RAW = [{"Ticker": "NVDA", "FullTicker": "NVDA", "Index": "S&P 500", "Price": 1145.82, "Change_Pct": 1.84, "Week_Chg": 4.32, "RSI": 62.4, "MACD_Hist": 8.42, "MACD_Hist_Prev": 6.11, "MACD_Line": 14.5, "ADX": 42.1, "Plus_DI": 32.4, "Minus_DI": 14.2, "EMA20": 1089.4, "EMA50": 1020.8, "EMA200": 890.2, "Vol_Ratio": 1.82, "ATR": 22.0, "Target_5D": 1197.96, "Stop_Loss": 1112.82, "RR": 1.58, "Score": 87, "Signal": "BUY"}, {"Ticker": "PLTR", "FullTicker": "PLTR", "Index": "S&P 500", "Price": 87.34, "Change_Pct": 2.14, "Week_Chg": 5.88, "RSI": 64.1, "MACD_Hist": 1.24, "MACD_Hist_Prev": 0.87, "MACD_Line": 1.81, "ADX": 40.3, "Plus_DI": 30.2, "Minus_DI": 12.8, "EMA20": 83.1, "EMA50": 76.4, "EMA200": 58.3, "Vol_Ratio": 1.64, "ATR": 2.8, "Target_5D": 93.86, "Stop_Loss": 83.14, "RR": 1.55, "Score": 83, "Signal": "BUY"}, {"Ticker": "META", "FullTicker": "META", "Index": "S&P 500", "Price": 612.45, "Change_Pct": 1.22, "Week_Chg": 3.11, "RSI": 60.7, "MACD_Hist": 5.38, "MACD_Hist_Prev": 4.12, "MACD_Line": 9.44, "ADX": 36.8, "Plus_DI": 28.6, "Minus_DI": 14.1, "EMA20": 592.8, "EMA50": 568.3, "EMA200": 501.2, "Vol_Ratio": 1.31, "ATR": 14.0, "Target_5D": 644.65, "Stop_Loss": 592.8, "RR": 1.64, "Score": 80, "Signal": "BUY"}, {"Ticker": "NFLX", "FullTicker": "NFLX", "Index": "S&P 500", "Price": 1085.2, "Change_Pct": 0.93, "Week_Chg": 2.74, "RSI": 58.3, "MACD_Hist": 12.34, "MACD_Hist_Prev": 10.22, "MACD_Line": 19.6, "ADX": 30.4, "Plus_DI": 26.8, "Minus_DI": 16.2, "EMA20": 1052.3, "EMA50": 1012.4, "EMA200": 912.8, "Vol_Ratio": 1.22, "ATR": 26.0, "Target_5D": 1143.96, "Stop_Loss": 1052.3, "RR": 1.79, "Score": 76, "Signal": "BUY"}, {"Ticker": "GOOGL", "FullTicker": "GOOGL", "Index": "S&P 500", "Price": 193.74, "Change_Pct": 0.71, "Week_Chg": 2.18, "RSI": 55.2, "MACD_Hist": 1.12, "MACD_Hist_Prev": 0.88, "MACD_Line": 1.74, "ADX": 31.2, "Plus_DI": 25.4, "Minus_DI": 15.8, "EMA20": 188.6, "EMA50": 181.4, "EMA200": 162.3, "Vol_Ratio": 1.18, "ATR": 4.0, "Target_5D": 202.66, "Stop_Loss": 188.6, "RR": 1.74, "Score": 73, "Signal": "BUY"}, {"Ticker": "AVGO", "FullTicker": "AVGO", "Index": "S&P 500", "Price": 245.3, "Change_Pct": 1.14, "Week_Chg": 2.92, "RSI": 57.6, "MACD_Hist": 2.18, "MACD_Hist_Prev": 1.74, "MACD_Line": 3.42, "ADX": 32.8, "Plus_DI": 27.1, "Minus_DI": 15.3, "EMA20": 238.4, "EMA50": 228.7, "EMA200": 198.4, "Vol_Ratio": 1.14, "ATR": 5.5, "Target_5D": 257.62, "Stop_Loss": 238.4, "RR": 1.79, "Score": 74, "Signal": "BUY"}, {"Ticker": "JPM", "FullTicker": "JPM", "Index": "S&P 500", "Price": 268.44, "Change_Pct": -0.22, "Week_Chg": 0.87, "RSI": 67.8, "MACD_Hist": 1.84, "MACD_Hist_Prev": 2.12, "MACD_Line": 3.22, "ADX": 28.4, "Plus_DI": 24.8, "Minus_DI": 18.6, "EMA20": 262.8, "EMA50": 254.2, "EMA200": 228.4, "Vol_Ratio": 0.94, "ATR": 5.5, "Target_5D": 280.43, "Stop_Loss": 262.8, "RR": 2.13, "Score": 68, "Signal": "HOLD"}, {"Ticker": "AAPL", "FullTicker": "AAPL", "Index": "S&P 500", "Price": 212.3, "Change_Pct": 0.31, "Week_Chg": 0.82, "RSI": 52.4, "MACD_Hist": 0.42, "MACD_Hist_Prev": 0.18, "MACD_Line": 0.74, "ADX": 22.1, "Plus_DI": 21.4, "Minus_DI": 18.8, "EMA20": 210.8, "EMA50": 208.4, "EMA200": 193.2, "Vol_Ratio": 1.02, "ATR": 3.8, "Target_5D": 220.36, "Stop_Loss": 206.6, "RR": 2.27, "Score": 62, "Signal": "HOLD"}, {"Ticker": "LLY", "FullTicker": "LLY", "Index": "S&P 500", "Price": 898.12, "Change_Pct": 0.51, "Week_Chg": 1.32, "RSI": 55.1, "MACD_Hist": 4.24, "MACD_Hist_Prev": 3.82, "MACD_Line": 7.18, "ADX": 24.8, "Plus_DI": 22.6, "Minus_DI": 17.4, "EMA20": 888.4, "EMA50": 872.8, "EMA200": 812.4, "Vol_Ratio": 1.08, "ATR": 18.0, "Target_5D": 935.92, "Stop_Loss": 888.4, "RR": 3.89, "Score": 60, "Signal": "HOLD"}, {"Ticker": "MSFT", "FullTicker": "MSFT", "Index": "S&P 500", "Price": 435.8, "Change_Pct": -0.14, "Week_Chg": 0.44, "RSI": 50.8, "MACD_Hist": 0.12, "MACD_Hist_Prev": 0.08, "MACD_Line": 0.38, "ADX": 20.2, "Plus_DI": 20.4, "Minus_DI": 19.2, "EMA20": 434.8, "EMA50": 431.2, "EMA200": 408.4, "Vol_Ratio": 0.98, "ATR": 8.0, "Target_5D": 452.2, "Stop_Loss": 423.8, "RR": 1.37, "Score": 55, "Signal": "HOLD"}, {"Ticker": "AMZN", "FullTicker": "AMZN", "Index": "S&P 500", "Price": 228.14, "Change_Pct": -0.42, "Week_Chg": -0.81, "RSI": 47.2, "MACD_Hist": -0.84, "MACD_Hist_Prev": -0.42, "MACD_Line": -1.24, "ADX": 18.4, "Plus_DI": 18.2, "Minus_DI": 20.4, "EMA20": 229.8, "EMA50": 226.4, "EMA200": 208.2, "Vol_Ratio": 0.92, "ATR": 4.8, "Target_5D": 237.64, "Stop_Loss": 220.94, "RR": 1.32, "Score": 48, "Signal": "HOLD"}, {"Ticker": "AMD", "FullTicker": "AMD", "Index": "S&P 500", "Price": 158.42, "Change_Pct": -0.72, "Week_Chg": -1.84, "RSI": 46.1, "MACD_Hist": -1.12, "MACD_Hist_Prev": -0.88, "MACD_Line": -1.84, "ADX": 19.8, "Plus_DI": 17.8, "Minus_DI": 22.1, "EMA20": 160.4, "EMA50": 162.8, "EMA200": 148.4, "Vol_Ratio": 0.88, "ATR": 4.2, "Target_5D": 166.57, "Stop_Loss": 152.12, "RR": 1.29, "Score": 44, "Signal": "HOLD"}, {"Ticker": "TSLA", "FullTicker": "TSLA", "Index": "S&P 500", "Price": 315.28, "Change_Pct": -2.34, "Week_Chg": -4.82, "RSI": 76.4, "MACD_Hist": -3.84, "MACD_Hist_Prev": -2.14, "MACD_Line": -5.42, "ADX": 45.2, "Plus_DI": 14.2, "Minus_DI": 36.8, "EMA20": 328.4, "EMA50": 318.8, "EMA200": 284.2, "Vol_Ratio": 2.12, "ATR": 14.0, "Target_5D": 282.8, "Stop_Loss": 329.28, "RR": 2.32, "Score": 18, "Signal": "SELL"}, {"Ticker": "GS", "FullTicker": "GS", "Index": "S&P 500", "Price": 612.4, "Change_Pct": -1.42, "Week_Chg": -2.84, "RSI": 72.2, "MACD_Hist": -4.82, "MACD_Hist_Prev": -2.44, "MACD_Line": -7.14, "ADX": 24.1, "Plus_DI": 18.4, "Minus_DI": 28.2, "EMA20": 621.8, "EMA50": 608.4, "EMA200": 564.8, "Vol_Ratio": 1.42, "ATR": 13.0, "Target_5D": 583.02, "Stop_Loss": 625.4, "RR": 2.26, "Score": 24, "Signal": "SELL"}, {"Ticker": "XOM", "FullTicker": "XOM", "Index": "S&P 500", "Price": 118.24, "Change_Pct": -1.84, "Week_Chg": -3.42, "RSI": 37.4, "MACD_Hist": -1.24, "MACD_Hist_Prev": -0.82, "MACD_Line": -2.18, "ADX": 30.2, "Plus_DI": 16.8, "Minus_DI": 30.4, "EMA20": 121.8, "EMA50": 125.4, "EMA200": 118.8, "Vol_Ratio": 1.18, "ATR": 2.5, "Target_5D": 112.54, "Stop_Loss": 120.74, "RR": 2.28, "Score": 22, "Signal": "SELL"}, {"Ticker": "SUNPHARMA", "FullTicker": "SUNPHARMA.NS", "Index": "NIFTY 50", "Price": 1842.35, "Change_Pct": 1.52, "Week_Chg": 3.84, "RSI": 64.8, "MACD_Hist": 14.82, "MACD_Hist_Prev": 11.44, "MACD_Line": 22.4, "ADX": 38.4, "Plus_DI": 30.8, "Minus_DI": 13.4, "EMA20": 1784.2, "EMA50": 1712.8, "EMA200": 1542.4, "Vol_Ratio": 1.72, "ATR": 42.0, "Target_5D": 1939.79, "Stop_Loss": 1784.2, "RR": 1.68, "Score": 82, "Signal": "BUY"}, {"Ticker": "TATAMOTORS", "FullTicker": "TATAMOTORS.NS", "Index": "NIFTY 50", "Price": 987.4, "Change_Pct": 2.04, "Week_Chg": 4.82, "RSI": 61.4, "MACD_Hist": 8.42, "MACD_Hist_Prev": 6.18, "MACD_Line": 13.24, "ADX": 35.2, "Plus_DI": 29.4, "Minus_DI": 15.2, "EMA20": 948.8, "EMA50": 908.4, "EMA200": 812.4, "Vol_Ratio": 1.58, "ATR": 28.0, "Target_5D": 1051.24, "Stop_Loss": 948.8, "RR": 1.65, "Score": 78, "Signal": "BUY"}, {"Ticker": "RELIANCE", "FullTicker": "RELIANCE.NS", "Index": "NIFTY 50", "Price": 2943.8, "Change_Pct": 0.82, "Week_Chg": 2.14, "RSI": 57.8, "MACD_Hist": 18.42, "MACD_Hist_Prev": 14.82, "MACD_Line": 28.4, "ADX": 30.8, "Plus_DI": 26.4, "Minus_DI": 16.8, "EMA20": 2882.4, "EMA50": 2802.8, "EMA200": 2542.4, "Vol_Ratio": 1.28, "ATR": 62.0, "Target_5D": 3080.82, "Stop_Loss": 2882.4, "RR": 2.23, "Score": 71, "Signal": "BUY"}, {"Ticker": "HDFCBANK", "FullTicker": "HDFCBANK.NS", "Index": "NIFTY 50", "Price": 1892.45, "Change_Pct": 0.44, "Week_Chg": 1.12, "RSI": 56.4, "MACD_Hist": 8.14, "MACD_Hist_Prev": 7.22, "MACD_Line": 12.84, "ADX": 25.4, "Plus_DI": 23.8, "Minus_DI": 17.4, "EMA20": 1862.8, "EMA50": 1828.4, "EMA200": 1682.4, "Vol_Ratio": 1.12, "ATR": 38.0, "Target_5D": 1973.39, "Stop_Loss": 1862.8, "RR": 2.73, "Score": 63, "Signal": "HOLD"}, {"Ticker": "ICICIBANK", "FullTicker": "ICICIBANK.NS", "Index": "NIFTY 50", "Price": 1367.2, "Change_Pct": 0.32, "Week_Chg": 0.88, "RSI": 54.2, "MACD_Hist": 4.82, "MACD_Hist_Prev": 4.44, "MACD_Line": 7.84, "ADX": 24.2, "Plus_DI": 22.4, "Minus_DI": 18.2, "EMA20": 1348.4, "EMA50": 1322.8, "EMA200": 1218.4, "Vol_Ratio": 1.08, "ATR": 28.0, "Target_5D": 1426.0, "Stop_Loss": 1348.4, "RR": 3.13, "Score": 60, "Signal": "HOLD"}, {"Ticker": "TCS", "FullTicker": "TCS.NS", "Index": "NIFTY 50", "Price": 3876.4, "Change_Pct": -0.22, "Week_Chg": 0.44, "RSI": 50.4, "MACD_Hist": 2.44, "MACD_Hist_Prev": 2.18, "MACD_Line": 4.12, "ADX": 18.4, "Plus_DI": 20.2, "Minus_DI": 19.8, "EMA20": 3862.8, "EMA50": 3844.4, "EMA200": 3712.8, "Vol_Ratio": 0.94, "ATR": 72.0, "Target_5D": 4021.84, "Stop_Loss": 3768.4, "RR": 1.35, "Score": 52, "Signal": "HOLD"}, {"Ticker": "INFY", "FullTicker": "INFY.NS", "Index": "NIFTY 50", "Price": 1743.8, "Change_Pct": -0.54, "Week_Chg": -1.12, "RSI": 45.4, "MACD_Hist": -4.82, "MACD_Hist_Prev": -3.44, "MACD_Line": -7.84, "ADX": 15.2, "Plus_DI": 18.4, "Minus_DI": 22.8, "EMA20": 1752.8, "EMA50": 1768.4, "EMA200": 1684.8, "Vol_Ratio": 0.86, "ATR": 36.0, "Target_5D": 1813.64, "Stop_Loss": 1689.8, "RR": 1.29, "Score": 44, "Signal": "HOLD"}, {"Ticker": "BAJFINANCE", "FullTicker": "BAJFINANCE.NS", "Index": "NIFTY 50", "Price": 8943.6, "Change_Pct": -1.92, "Week_Chg": -3.84, "RSI": 73.4, "MACD_Hist": -42.84, "MACD_Hist_Prev": -24.14, "MACD_Line": -68.42, "ADX": 27.4, "Plus_DI": 16.8, "Minus_DI": 30.4, "EMA20": 9124.8, "EMA50": 8984.4, "EMA200": 8412.4, "Vol_Ratio": 1.62, "ATR": 200.0, "Target_5D": 8499.6, "Stop_Loss": 9143.6, "RR": 2.22, "Score": 28, "Signal": "SELL"}, {"Ticker": "WIPRO", "FullTicker": "WIPRO.NS", "Index": "NIFTY 50", "Price": 467.3, "Change_Pct": -2.14, "Week_Chg": -4.22, "RSI": 38.2, "MACD_Hist": -4.18, "MACD_Hist_Prev": -2.84, "MACD_Line": -6.84, "ADX": 22.4, "Plus_DI": 16.4, "Minus_DI": 30.8, "EMA20": 484.8, "EMA50": 498.4, "EMA200": 484.8, "Vol_Ratio": 1.24, "ATR": 11.0, "Target_5D": 442.44, "Stop_Loss": 478.3, "RR": 2.26, "Score": 24, "Signal": "SELL"}, {"Ticker": "SBIN", "FullTicker": "SBIN.NS", "Index": "NIFTY 50", "Price": 812.4, "Change_Pct": -2.42, "Week_Chg": -5.14, "RSI": 35.8, "MACD_Hist": -8.42, "MACD_Hist_Prev": -5.84, "MACD_Line": -14.24, "ADX": 28.4, "Plus_DI": 14.8, "Minus_DI": 34.2, "EMA20": 844.8, "EMA50": 868.4, "EMA200": 824.8, "Vol_Ratio": 1.84, "ATR": 19.0, "Target_5D": 768.32, "Stop_Loss": 831.4, "RR": 2.32, "Score": 18, "Signal": "SELL"}, {"Ticker": "COFORGE", "FullTicker": "COFORGE.NS", "Index": "NIFTY 100", "Price": 8234.4, "Change_Pct": 1.72, "Week_Chg": 4.14, "RSI": 66.2, "MACD_Hist": 84.42, "MACD_Hist_Prev": 62.18, "MACD_Line": 128.4, "ADX": 36.4, "Plus_DI": 30.4, "Minus_DI": 13.8, "EMA20": 7882.4, "EMA50": 7412.8, "EMA200": 6484.4, "Vol_Ratio": 1.54, "ATR": 195.0, "Target_5D": 8680.95, "Stop_Loss": 7941.9, "RR": 1.53, "Score": 79, "Signal": "BUY"}, {"Ticker": "MPHASIS", "FullTicker": "MPHASIS.NS", "Index": "NIFTY 100", "Price": 3187.6, "Change_Pct": 1.24, "Week_Chg": 3.02, "RSI": 62.4, "MACD_Hist": 28.84, "MACD_Hist_Prev": 22.14, "MACD_Line": 44.82, "ADX": 32.4, "Plus_DI": 27.8, "Minus_DI": 15.4, "EMA20": 3082.4, "EMA50": 2948.8, "EMA200": 2642.4, "Vol_Ratio": 1.32, "ATR": 72.0, "Target_5D": 3348.88, "Stop_Loss": 3082.4, "RR": 1.53, "Score": 74, "Signal": "BUY"}, {"Ticker": "ZOMATO", "FullTicker": "ZOMATO.NS", "Index": "NIFTY 100", "Price": 287.4, "Change_Pct": 0.42, "Week_Chg": 1.18, "RSI": 53.4, "MACD_Hist": 1.84, "MACD_Hist_Prev": 1.52, "MACD_Line": 2.84, "ADX": 22.4, "Plus_DI": 21.8, "Minus_DI": 18.4, "EMA20": 282.8, "EMA50": 274.4, "EMA200": 248.4, "Vol_Ratio": 1.12, "ATR": 7.0, "Target_5D": 301.89, "Stop_Loss": 282.8, "RR": 3.15, "Score": 57, "Signal": "HOLD"}, {"Ticker": "PIDILITIND", "FullTicker": "PIDILITIND.NS", "Index": "NIFTY 100", "Price": 3234.8, "Change_Pct": 0.54, "Week_Chg": 1.42, "RSI": 58.4, "MACD_Hist": 18.42, "MACD_Hist_Prev": 14.84, "MACD_Line": 28.82, "ADX": 27.4, "Plus_DI": 24.8, "Minus_DI": 17.2, "EMA20": 3182.8, "EMA50": 3124.4, "EMA200": 2884.8, "Vol_Ratio": 1.08, "ATR": 65.0, "Target_5D": 3371.95, "Stop_Loss": 3182.8, "RR": 2.64, "Score": 61, "Signal": "HOLD"}, {"Ticker": "PERSISTENT", "FullTicker": "PERSISTENT.NS", "Index": "NIFTY 100", "Price": 5892.4, "Change_Pct": -1.62, "Week_Chg": -3.24, "RSI": 71.4, "MACD_Hist": -84.24, "MACD_Hist_Prev": -48.18, "MACD_Line": -128.84, "ADX": 25.4, "Plus_DI": 18.4, "Minus_DI": 28.8, "EMA20": 6024.8, "EMA50": 5892.4, "EMA200": 5212.8, "Vol_Ratio": 1.44, "ATR": 135.0, "Target_5D": 5592.7, "Stop_Loss": 6027.4, "RR": 2.22, "Score": 28, "Signal": "SELL"}];
+let signalFilter = 'ALL', indexFilter = 'ALL';
+let sortKey = 'Score', sortDir = -1;
+
+function setSignal(v){
+  signalFilter = v;
+  document.querySelectorAll('.filter-group:first-child .filter-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector('.'+ (v==='ALL'?'all':v.toLowerCase()) +'-btn').classList.add('active');
+  render();
+}
+function setIndex(v){
+  indexFilter = v;
+  document.querySelectorAll('.filter-group:last-child .filter-btn').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+  render();
+}
+function sortBy(k){
+  if(sortKey===k) sortDir*=-1; else {sortKey=k; sortDir=-1;}
+  document.querySelectorAll('th').forEach(t=>{t.classList.remove('sorted-asc','sorted-desc')});
+  const headers = ['rank','Ticker','Index','Price','Change_Pct','Week_Chg','RSI','MACD_Hist','ADX','Vol_Ratio','Target_5D','Stop_Loss','RR','Score','Signal'];
+  const idx = headers.indexOf(k);
+  if(idx>=0){
+    const th = document.querySelectorAll('th')[idx];
+    th.classList.add(sortDir===-1?'sorted-desc':'sorted-asc');
+  }
+  render();
+}
+function scoreColor(s){
+  if(s>=65) return 'linear-gradient(90deg,#00D4AA,#00A8A8)';
+  if(s>=40) return 'linear-gradient(90deg,#0388BC,#0388BC88)';
+  return 'linear-gradient(90deg,#C0205A,#C0205A88)';
+}
+function rsiClass(r){
+  if(r>=73) return 'rsi-sell';
+  if(r>=50) return 'rsi-buy';
+  if(r>=35) return 'rsi-hold';
+  return 'rsi-sell';
+}
+function idxClass(idx){
+  if(idx==='NIFTY 50') return 'idx-nifty50';
+  if(idx==='NIFTY 100') return 'idx-nifty100';
+  return 'idx-sp500';
+}
+function idxShort(idx){
+  if(idx==='NIFTY 50') return 'N50';
+  if(idx==='NIFTY 100') return 'N100';
+  return 'SP5';
+}
+function emaClass(r){
+  if(r.Price > r.EMA20 && r.EMA20 > r.EMA50) return 'ema-ok';
+  if(r.Price < r.EMA50) return 'ema-bad';
+  return 'ema-neutral';
+}
+function emaText(r){
+  if(r.Price > r.EMA20 && r.EMA20 > r.EMA50) return '▲▲';
+  if(r.Price > r.EMA20) return '▲—';
+  if(r.Price < r.EMA50) return '▼▼';
+  return '—▼';
+}
+
+function render(){
+  const search = document.getElementById('searchBox').value.toLowerCase();
+  let data = RAW.filter(r=>{
+    if(signalFilter!=='ALL' && r.Signal!==signalFilter) return false;
+    if(indexFilter!=='ALL' && r.Index!==indexFilter) return false;
+    if(search && !r.Ticker.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  if(sortKey==='rank'){
+    data.sort((a,b)=>sortDir*(b.Score-a.Score));
+  } else if(typeof data[0]?.[sortKey]==='number'){
+    data.sort((a,b)=>sortDir*(a[sortKey]-b[sortKey]));
+  } else {
+    data.sort((a,b)=>sortDir*(a[sortKey]||'').localeCompare(b[sortKey]||''));
+  }
+
+  const tbody = document.getElementById('tbody');
+  if(data.length===0){
+    tbody.innerHTML='';
+    document.getElementById('empty').style.display='block';
+    document.getElementById('count-label').textContent='';
+    return;
+  }
+  document.getElementById('empty').style.display='none';
+
+  tbody.innerHTML = data.map((r,i)=>{
+    const chgCls = r.Change_Pct>=0?'pos':'neg';
+    const wkCls  = r.Week_Chg>=0?'pos':'neg';
+    const macdCls= r.MACD_Hist>=0?'macd-pos':'macd-neg';
+    const macdSym= r.MACD_Hist>=0?'▲':'▼';
+    const tgtCls = r.Signal==='SELL'?'neg':'pos';
+    const slCls  = 'neg';
+    const rrColor= r.RR>=2?'#00D4AA':r.RR>=1?'#F5A623':'#C0205A';
+    const tgtPct = r.Signal==='SELL'
+      ? ((r.Target_5D-r.Price)/r.Price*100).toFixed(1)
+      : ('+'+((r.Target_5D-r.Price)/r.Price*100).toFixed(1));
+    const slPct  = (((r.Stop_Loss-r.Price)/r.Price)*100).toFixed(1);
+    return `<tr>
+      <td class="rank">${i+1}</td>
+      <td class="ticker">${r.Ticker}</td>
+      <td><span class="idx-badge ${idxClass(r.Index)}">${idxShort(r.Index)}</span></td>
+      <td class="price">${r.Price.toLocaleString()}</td>
+      <td class="chg ${chgCls}">${r.Change_Pct>=0?'+':''}${r.Change_Pct}%</td>
+      <td class="chg ${wkCls}">${r.Week_Chg>=0?'+':''}${r.Week_Chg}%</td>
+      <td class="rsi-val ${rsiClass(r.RSI)}">${r.RSI}</td>
+      <td class="${macdCls}">${macdSym} ${Math.abs(r.MACD_Hist).toFixed(3)}</td>
+      <td class="adx-val" style="color:${r.ADX>=25?'#00D4AA':r.ADX>=20?'#0388BC':'#7B71B0'}">${r.ADX}</td>
+      <td class="price" style="color:${r.Vol_Ratio>=1.5?'#00D4AA':r.Vol_Ratio>=1.1?'#0388BC':'#7B71B0'}">${r.Vol_Ratio}×</td>
+      <td class="price ${tgtCls}" title="${tgtPct}%">${r.Target_5D.toLocaleString()} <span style="font-size:10px;opacity:.7">(${tgtPct}%)</span></td>
+      <td class="price ${slCls}" title="${slPct}%">${r.Stop_Loss.toLocaleString()} <span style="font-size:10px;opacity:.7">(${slPct}%)</span></td>
+      <td style="font-family:var(--mono);font-size:11px;font-weight:700;color:${rrColor}">${r.RR}×</td>
+      <td>
+        <div class="score-bar">
+          <div class="bar-bg"><div class="bar-fill" style="width:${r.Score}%;background:${scoreColor(r.Score)}"></div></div>
+          <span class="score-num">${r.Score}</span>
+        </div>
+      </td>
+      <td><span class="sig-badge sig-${r.Signal}">${r.Signal}</span></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('count-label').textContent = `Showing ${data.length} of ${RAW.length} stocks`;
+}
+
+// Fetch live index data
+async function fetchIndex(sym, priceId, chgId){
+  try{
+    const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=2d`);
+    const d = await r.json();
+    const closes = d.chart.result[0].indicators.quote[0].close;
+    const prev = closes[closes.length-2], curr = closes[closes.length-1];
+    const chg = ((curr-prev)/prev*100).toFixed(2);
+    const cls = chg>=0?'pos':'neg';
+    document.getElementById(priceId).textContent = curr.toLocaleString('en-IN',{maximumFractionDigits:2});
+    document.getElementById(chgId).innerHTML = `<span class="${cls}">${chg>=0?'+':''}${chg}%</span>`;
+  }catch(e){}
+}
+fetchIndex('%5ENSEI','n50-px','n50-chg');
+fetchIndex('%5ECNX100','n100-px','n100-chg');
+fetchIndex('%5EGSPC','sp500-px','sp500-chg');
+
+render();
+</script>
+</body>
+</html>
