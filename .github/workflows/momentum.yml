@@ -1,0 +1,55 @@
+name: 📈 Momentum Tracker — Auto Run
+
+# ─────────────────────────────────────────────────────────────
+#  SCHEDULE  (all times in UTC — KSA is UTC+3)
+#    07:00 AM KSA  =  04:00 UTC  →  after US market data settles overnight
+#    05:00 PM KSA  =  14:00 UTC  →  after Indian market closes (NSE 3:30 PM IST = 1 PM KSA)
+#  Runs Monday–Friday only (trading days)
+# ─────────────────────────────────────────────────────────────
+on:
+  schedule:
+    - cron: '0 4 * * 1-5'    # 7:00 AM KSA  — morning run (US data settled)
+    - cron: '0 14 * * 1-5'   # 5:00 PM KSA  — evening run (Indian data settled)
+  workflow_dispatch:           # ← Manual "Run now" button in GitHub UI
+
+permissions:
+  contents: write              # Needed to commit the generated dashboard back
+
+jobs:
+  generate-dashboard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60        # Safety limit (script usually finishes in ~10 min)
+
+    steps:
+
+      # 1. Get your code
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Set up Python
+      - name: 🐍 Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      # 3. Install libraries
+      - name: 📦 Install dependencies
+        run: pip install -r requirements.txt
+
+      # 4. Run the tracker — generates momentum_dashboard.html
+      - name: 🚀 Run Momentum Tracker
+        run: python momentum_tracker.py
+
+      # 5. Copy the output as index.html (GitHub Pages serves this automatically)
+      - name: 📄 Prepare dashboard for GitHub Pages
+        run: cp momentum_dashboard.html index.html
+
+      # 6. Commit & push index.html so GitHub Pages picks it up
+      - name: 💾 Commit updated dashboard
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name  "GitHub Actions Bot"
+          git add index.html
+          git diff --staged --quiet || git commit -m "📊 Dashboard updated — $(TZ='Asia/Riyadh' date '+%d %b %Y %I:%M %p KSA')"
+          git push
